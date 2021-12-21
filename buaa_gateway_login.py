@@ -10,11 +10,29 @@
 import requests
 import socket
 import time
-import re
 import math
 import hmac
 import hashlib
 import getpass
+import json
+import urllib3
+
+urllib3.disable_warnings()
+
+
+def get_jsonp(url, params):
+    """
+    Send jsonp request and decode response
+
+    About jsonp: https://stackoverflow.com/questions/2067472/what-is-jsonp-and-why-was-it-created
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/76.0.3809.100 Chrome/76.0.3809.100 Safari/537.36",
+    }
+    callback_name = "jQuery112406951885120277062_" + str(int(time.time() * 1000))
+    params['callback'] = callback_name
+    resp = requests.get(url, params=params, headers=headers, verify=False)
+    return json.loads(resp.text[len(callback_name) + 1:-1])
 
 
 def get_IP():
@@ -26,16 +44,12 @@ def get_IP():
 def get_ip_token(username):
     get_challenge_url = "https://gw.buaa.edu.cn/cgi-bin/get_challenge"
     get_challenge_params = {
-        "callback": "jQuery112406951885120277062_"+str(int(time.time()*1000)),
         "username": username,
         "ip": '0.0.0.0',
-        "_": int(time.time()*1000)
+        "_": int(time.time() * 1000)
     }
-    res = requests.get(
-        get_challenge_url, params=get_challenge_params, headers=headers, verify=False)
-    token = re.search('"challenge":".*?"', res.text).group(0)[13:-1]
-    ip =    re.search('"client_ip":".*?"', res.text).group(0)[13:-1]
-    return ip, token
+    res = get_jsonp(get_challenge_url, get_challenge_params)
+    return res["client_ip"], res["challenge"],
 
 
 def get_info(username, password, ip):
@@ -46,8 +60,7 @@ def get_info(username, password, ip):
         'acid': '1',
         "enc_ver": 'srun_bx1'
     }
-    info = re.sub("'", '"', str(params))
-    info = re.sub(" ", '', info)
+    info = json.dumps(params)
     return info
 
 
@@ -150,8 +163,7 @@ def get_base64(s):
     if len(s) == 0:
         return s
     for i in range(0, imax, 3):
-        b10 = (_getbyte(s, i) << 16) | (
-            _getbyte(s, i + 1) << 8) | _getbyte(s, i + 2)
+        b10 = (_getbyte(s, i) << 16) | (_getbyte(s, i + 1) << 8) | _getbyte(s, i + 2)
         x.append(_ALPHA[(b10 >> 18)])
         x.append(_ALPHA[((b10 >> 12) & 63)])
         x.append(_ALPHA[((b10 >> 6) & 63)])
@@ -163,8 +175,7 @@ def get_base64(s):
                  _ALPHA[((b10 >> 12) & 63)] + _PADCHAR + _PADCHAR)
     elif len(s) - imax == 2:
         b10 = (_getbyte(s, i) << 16) | (_getbyte(s, i + 1) << 8)
-        x.append(_ALPHA[(b10 >> 18)] + _ALPHA[((b10 >> 12) & 63)
-                                              ] + _ALPHA[((b10 >> 6) & 63)] + _PADCHAR)
+        x.append(_ALPHA[(b10 >> 18)] + _ALPHA[((b10 >> 12) & 63)] + _ALPHA[((b10 >> 6) & 63)] + _PADCHAR)
     return "".join(x)
 
 
@@ -181,42 +192,35 @@ if __name__ == "__main__":
     username = input('username: ')
     password = getpass.getpass('password: ')
 
-    init_url = "https://gw.buaa.edu.cn/"
     srun_portal_url = "https://gw.buaa.edu.cn/cgi-bin/srun_portal"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/76.0.3809.100 Chrome/76.0.3809.100 Safari/537.36",
-    }
     ip, token = get_ip_token(username)
     info = get_info(username, password, ip)
 
     # import IPython
     # IPython.embed()
     data = {
-        "callback": "jQuery112406951885120277062_"+str(int(time.time()*1000)),
         "action": "login",
         "username": username,
-        "password": "{MD5}"+get_md5(password, token),
+        "password": "{MD5}" + get_md5(password, token),
         "ac_id": 1,
         "ip": ip,
-        "info": "{SRBX1}"+get_base64(get_xencode(info, token)),
+        "info": "{SRBX1}" + get_base64(get_xencode(info, token)),
         "n": "200",
         "type": "1",
         "os": "Linux.Hercules",
         "name": "Linux",
         "double_stack": '',
-        "_": int(time.time()*1000)
+        "_": int(time.time() * 1000)
     }
-    chkstr = token+username
-    chkstr += token+get_md5(password, token)
-    chkstr += token+'1'
-    chkstr += token+ip
-    chkstr += token+'200'
-    chkstr += token+'1'
-    chkstr += token+"{SRBX1}"+get_base64(get_xencode(info, token))
+    chkstr = token + username
+    chkstr += token + get_md5(password, token)
+    chkstr += token + '1'
+    chkstr += token + ip
+    chkstr += token + '200'
+    chkstr += token + '1'
+    chkstr += token + "{SRBX1}" + get_base64(get_xencode(info, token))
     data['chksum'] = get_sha1(chkstr)
 
-    res = requests.get(srun_portal_url, params=data,
-                       headers=headers, verify=False)
-
-    print(res.text)
+    res = get_jsonp(srun_portal_url, data)
+    print(json.dumps(res, indent=4, ensure_ascii=False))
 
