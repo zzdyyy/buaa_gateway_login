@@ -187,11 +187,7 @@ def get_sha1(value):
     return hashlib.sha1(value.encode()).hexdigest()
 
 
-if __name__ == "__main__":
-    print('gw.buaa.edu.cn portal login...')
-    username = input('username: ')
-    password = getpass.getpass('password: ')
-
+def login(username, password):
     srun_portal_url = "https://gw.buaa.edu.cn/cgi-bin/srun_portal"
     ip, token = get_ip_token(username)
     info = get_info(username, password, ip)
@@ -221,6 +217,15 @@ if __name__ == "__main__":
     chkstr += token + "{SRBX1}" + get_base64(get_xencode(info, token))
     data['chksum'] = get_sha1(chkstr)
 
-    res = get_jsonp(srun_portal_url, data)
-    print(json.dumps(res, indent=4, ensure_ascii=False))
+    return get_jsonp(srun_portal_url, data)
+
+
+if __name__ == "__main__":
+    print('gw.buaa.edu.cn portal login...')
+    username = input('username: ')
+    password = getpass.getpass('password: ')
+
+    login_info = login(username, password)
+    print(json.dumps(login_info, indent=4, ensure_ascii=False))
+
 
