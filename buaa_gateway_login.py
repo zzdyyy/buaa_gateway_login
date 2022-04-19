@@ -3,6 +3,7 @@
 @Description: login gw.buaa.edu.cn in Command line mode
     based on https://github.com/luoboganer 2019-09-01
     based on https://coding.net/u/huxiaofan1223/p/jxnu_srun/git
+    based on https://blog.csdn.net/qq_41797946/article/details/89417722
 
 '''
 
