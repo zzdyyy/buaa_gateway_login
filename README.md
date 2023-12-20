@@ -22,7 +22,7 @@ if __name__ == "__main__":
 ```bash
 #!/usr/bin/env bash
 # 如果校园网未登录，访问百度将会跳转到gw.buaa.edu.cn
-if curl -s www.baidu.com 2>/dev/null | grep gw.buaa.edu.cn >/dev/null 2>&1; then
+if curl -s baidu.com 2>/dev/null | grep gw.buaa.edu.cn >/dev/null 2>&1; then
     python3 /usr/local/bin/buaa_gateway_login.py
 fi
 ```
